@@ -5,7 +5,8 @@
   <body>
     <h1>Hboard.</h1>
     <p>Let the lambdas be with you young warrior!</p>
-    <form name="input" action="post" method="post">
+    <form name="input" action="post" method="post" enctype="multipart/form-data">
+      <input type="file" name="file" id="file">
       Text: <input type="text" name="text">
       <input type="submit" value="Post it!">
     </form> 

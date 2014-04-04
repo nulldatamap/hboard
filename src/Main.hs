@@ -13,8 +13,10 @@ import           Snap.Util.FileServe
 import           Control.Lens
 import           Control.Lens.TH
 import           Data.UID (newUIDString)
-import           System.Directory (renameFile)
+import           System.Directory (renameFile, doesFileExist)
 import           Data.List.Split (splitOn)
+import           Snap.Internal.Debug (debug)
+import           Control.Concurrent (threadDelay)
 import qualified Data.ByteString.Char8 as BS
 import           BoardApp
 
@@ -54,12 +56,11 @@ handleImageUpload :: MonadIO m =>
                      [(PartInfo, Either PolicyViolationException FilePath)]
                      -> m (Either BS.ByteString FilePath)
 handleImageUpload [ (pain, Right fp) ] = do
-  nuid <- liftIO newUIDString
-  let nfilename = mkfn nuid
-  liftIO $ renameFile fp nfilename
-  return $ Right nfilename
-  where
-    mkfn x = "res/img/" ++ x ++ "." ++ (last $ splitOn "." fp)
+  fe <- liftIO $ doesFileExist fp
+  nfn <- newImage $ fileExtension fp
+  liftIO $ putStrLn $ show nfn
+  liftIO $ renameFile fp nfn
+  return $ Right fp
 
 handleImageUpload [ (_, Left polex) ] = return $ Left $ BS.pack $ show polex
 
@@ -67,27 +68,40 @@ handleImageUpload [] = return $ Left "Invalid form."
 
 handleImageUpload (_:_) = return $ Left "Multiple files submitted!"
 
+fileExtension :: FilePath -> FilePath
+fileExtension fp = (last $ splitOn "." fp)
+
+newImage :: MonadIO m => FilePath -> m FilePath
+newImage fe = do
+  nuid <- liftIO newUIDString
+  let nfilename = mkfn nuid
+  return $ nfilename
+  where
+    mkfn x = "res/img/" ++ x
+
 performPost :: HHandler ()
 performPost = do
   -- Insert spam preventing code here
-  validate >>= return
+  validateImage >>= return
   where
     validate = do
-      utext <- getParam "text"
+      utext <- getPostParam "text"
       case utext of
-           Nothing    -> writeBS "Invalid form."
-           Just atext -> if BS.length atext < 12
+           Nothing    -> writeBS "Invalid form ( missing text )."
+           Just atext -> if BS.length atext < 0
                             then writeBS "Post too short."
-                            else validateImage
+                            else validateImage <|> writeBS "No image supplied"
 
     validateImage = do
-      uimg <- handleFileUploads "tmp"
+      uimg <- handleFileUploads "./tmp"
                                 defaultUploadPolicy
                                 (const $ allowWithMaximumSize 300000)
                                 handleImageUpload
+      liftIO $ putStrLn $ show uimg
       case uimg of
            Left err  -> writeBS $ err
-           Right imp -> writeBS $ "Success!"
+           Right imp -> do
+              writeBS $ "Success!"
 
 
 main :: IO ()
