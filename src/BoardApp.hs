@@ -4,19 +4,19 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module BoardApp ( boardInit
-                , BoardApp
-                , nextEntryId
-                , postThread
-                , replyTo
-                , previewPost
-                , deletePost
-                , postOfReply
-                , getPost
-                , getPosts
-                , ThreadPost
-                , ThreadReply
-                , Board )
+module BoardApp ( BoardApp
+                , Board      (..)
+                , ThreadPost (..)
+                , ThreadReply(..)
+                , NextEntryId(..)
+                , PostThread (..)
+                , ReplyTo    (..)
+                , PreviewPost(..)
+                , DeletePost (..)
+                , PostOfReply(..)
+                , GetPost    (..)
+                , GetPosts   (..)
+                , boardInit )
   where
 
 import           Snap
