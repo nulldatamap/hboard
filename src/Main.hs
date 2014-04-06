@@ -13,17 +13,21 @@ import           Snap.Util.FileServe
 import           Control.Lens
 import           Control.Lens.TH
 import           Data.UID (newUIDString)
-import           System.Directory (renameFile, doesFileExist)
+import           System.Directory (renameFile, doesFileExist, removeFile)
 import           Data.List.Split (splitOn)
 import           Snap.Internal.Debug (debug)
 import           Control.Concurrent (threadDelay)
 import qualified Data.ByteString.Char8 as BS
+import           Snap.Snaplet.AcidState
 import           BoardApp
 
 data HboardApp = HboardApp { _board :: Snaplet BoardApp }
 makeLenses ''HboardApp
 
 type HHandler = Handler HboardApp HboardApp
+
+instance HasAcid HboardApp Board where
+  getAcidStore x = getAcidStore (x ^. board . snapletValue)
 
 -- Helper functions
 
@@ -52,6 +56,7 @@ hboardAppInit = makeSnaplet "hboard" "An image-board server!" Nothing $ do
   wrapSite (\site -> tryTop <|> site <|> serveNotFound)
   return $ HboardApp b
 
+
 handleImageUpload :: MonadIO m =>
                      [(PartInfo, Either PolicyViolationException FilePath)]
                      -> m (Either BS.ByteString FilePath)
@@ -60,7 +65,7 @@ handleImageUpload [ (pain, Right fp) ] = do
   nfn <- newImage $ fileExtension fp
   liftIO $ putStrLn $ show nfn
   liftIO $ renameFile fp nfn
-  return $ Right fp
+  return $ Right nfn
 
 handleImageUpload [ (_, Left polex) ] = return $ Left $ BS.pack $ show polex
 
@@ -82,26 +87,22 @@ newImage fe = do
 performPost :: HHandler ()
 performPost = do
   -- Insert spam preventing code here
-  validateImage >>= return
+  img <- validateImage
+  (validate img) =<< getPostParam "text"
   where
-    validate = do
-      utext <- getPostParam "text"
-      case utext of
-           Nothing    -> writeBS "Invalid form ( missing text )."
-           Just atext -> if BS.length atext < 0
-                            then writeBS "Post too short."
-                            else validateImage <|> writeBS "No image supplied"
+    validate (Left err) x = writeBS err
+    validate (Right fp) x = maybe (writeBS "No text supplied")
+                                  (formulateRepsonse fp)
+                                  x
+    formulateRepsonse fp t = do
+      nid <- query NextEntryId
+      update $ PostThread (ThreadPost (show nid) fp t [])
+      writeBS $ BS.append (BS.pack $ "Image: " ++ fp ++ "\n") t
 
-    validateImage = do
-      uimg <- handleFileUploads "./tmp"
-                                defaultUploadPolicy
-                                (const $ allowWithMaximumSize 300000)
-                                handleImageUpload
-      liftIO $ putStrLn $ show uimg
-      case uimg of
-           Left err  -> writeBS $ err
-           Right imp -> do
-              writeBS $ "Success!"
+    validateImage = handleFileUploads "./tmp"
+                                      defaultUploadPolicy
+                                      (const $ allowWithMaximumSize 1572864)
+                                      handleImageUpload
 
 
 main :: IO ()
