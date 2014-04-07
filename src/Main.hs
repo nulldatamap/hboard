@@ -13,7 +13,7 @@ import           Snap.Util.FileServe
 import           Control.Lens
 --import           Control.Lens.TH
 import           Data.UID (newUIDString)
-import           System.Directory (renameFile)
+import           System.Directory
 import           Data.List.Split (splitOn)
 import qualified Data.ByteString.Char8      as BS
 import           Snap.Snaplet.AcidState
@@ -75,6 +75,10 @@ hboardAppInit = makeSnaplet "hboard" "An image-board server!" Nothing $ do
   b <- nestSnaplet "board" board $ boardInit
   addRoutes routes
   wrapSite (\site -> tryTop <|> site <|> serveNotFound)
+  tmpExists <- liftIO $ doesDirectoryExist "./tmp"
+  if not tmpExists
+     then liftIO $ createDirectory "./tmp"
+     else return ()
   return $ HboardApp b
 
 fetchPost :: HHandler ()
