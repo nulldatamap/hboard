@@ -1,9 +1,16 @@
 <html>
   <head>
     <title>Wow in the wowser!</title>
+    <script type="text/javascript" src="/res/js/jquery-1.11.0.min.js"></script>
+    <script type="text/javascript" src="/res/js/render.js"></script>
   </head>
-  <body>
+  <body onload="Render.init();">
     <h1>Hboard.</h1>
+    <script type="text/javascript">
+      $.getJSON( "/o/0", function ( data ) {
+        console.log( data );
+      } );
+    </script>
     <p>Let the lambdas be with you young warrior!</p>
     <form name="input" action="post" method="post" enctype="multipart/form-data">
       <input type="file" name="file" id="file">

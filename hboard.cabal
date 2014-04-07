@@ -15,6 +15,9 @@ Executable hboard
   main-is: Main.hs
 
   Build-depends:
+    aeson                     >= 0.7.0.2,
+    text                      >= 0.11.3.1,
+    transformers,
     safecopy                  >= 0.8.2,
     containers                >= 0.5,
     lens                      >= 4.1.2,

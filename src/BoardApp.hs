@@ -1,7 +1,7 @@
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE TemplateHaskell    #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module BoardApp ( BoardApp
@@ -21,14 +21,16 @@ module BoardApp ( BoardApp
 
 import           Snap
 import           Control.Lens.TH
-import           Control.Lens
+import           Control.Lens hiding ((.=))
 import           Control.Monad.Reader
 import           Data.Typeable
 import qualified Data.List as List
-import           Data.ByteString hiding (take, reverse, elem, drop)
+import           Data.ByteString.Char8 hiding (take, reverse, elem, drop)
 import           Data.SafeCopy
 import           Snap.Snaplet.AcidState
 import qualified Data.Map.Strict as Map
+import           Data.Aeson
+import           Data.Text.Encoding
 
 type ImageRef = String
 type PostID = String
@@ -37,6 +39,12 @@ type PostID = String
 data ThreadReply = ThreadReply{ _replyId :: PostID
                               , _replyImage :: (Maybe ImageRef)
                               , _replyText :: ByteString } deriving (Typeable)
+
+instance ToJSON ThreadReply where
+  toJSON (ThreadReply _id _img _text) = object [ "id"   .= _id
+                                               , "img"  .= _img
+                                               , "text" .= decodeUtf8 _text ]
+
 makeLenses ''ThreadReply
 
 -- A thread posted on the image board, always has an image and text
@@ -45,6 +53,13 @@ data ThreadPost = ThreadPost{ _postId :: PostID
                             , _postImage :: ImageRef
                             , _postText :: ByteString
                             , _postReplies :: [ThreadReply] } deriving (Typeable)
+
+instance ToJSON ThreadPost where
+  toJSON (ThreadPost _id _img _text _replies ) = object [ "id"      .= _id
+                                                        , "img"     .= _img
+                                                        , "text"    .= decodeUtf8 _text
+                                                        , "replies" .= _replies ]
+
 makeLenses ''ThreadPost
 
 -- The whole image board, with a post-count for generating post ids, a list 
@@ -155,7 +170,6 @@ instance HasAcid BoardApp Board where
 
 boardInit :: SnapletInit b BoardApp
 boardInit = makeSnaplet "boardapp" "A image board database-thing" Nothing $ do
-  -- Initialize the acid state
   a <- nestSnaplet "acid" acid $ acidInit (Board 0 [] Map.empty)
   return $ BoardApp a
 

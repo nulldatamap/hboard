@@ -11,15 +11,15 @@ import           Snap
 import           Snap.Util.FileUploads
 import           Snap.Util.FileServe
 import           Control.Lens
-import           Control.Lens.TH
+--import           Control.Lens.TH
 import           Data.UID (newUIDString)
-import           System.Directory (renameFile, doesFileExist, removeFile)
+import           System.Directory (renameFile)
 import           Data.List.Split (splitOn)
-import           Snap.Internal.Debug (debug)
-import           Control.Concurrent (threadDelay)
-import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Char8      as BS
 import           Snap.Snaplet.AcidState
 import           BoardApp
+import           Data.Aeson (encode)
+import           Numeric
 
 data HboardApp = HboardApp { _board :: Snaplet BoardApp }
 makeLenses ''HboardApp
@@ -30,40 +30,85 @@ instance HasAcid HboardApp Board where
   getAcidStore x = getAcidStore (x ^. board . snapletValue)
 
 -- Helper functions
-
+-- Because caching a dynamic site just doesn't work well
 uncachedHandler :: HHandler a -> HHandler a
 uncachedHandler h = do
   modifyResponse $ setHeader "Cache-Control" "no-cache"
   h
   finishWith =<< getResponse
 
-serveNotFound :: HHandler ()
-serveNotFound = do
-  sendFile "res/404.html"
-  modifyResponse $ setResponseCode 404
+withResponseCode :: Int -> HHandler () -> HHandler ()
+withResponseCode c e = do
+  e -- verybody do the flop.
+  modifyResponse $ setResponseCode c
   finishWith =<< getResponse
+
+withContentType :: BS.ByteString -> HHandler () -> HHandler()
+withContentType c e = do
+  e
+  modifyResponse $ setContentType c
+  finishWith =<< getResponse
+
+-- The page you're looking for is in another castle.
+serveNotFound :: HHandler ()
+serveNotFound = withResponseCode 404 $ sendFile "res/404.html"
 
 tryTop :: HHandler ()
 tryTop = ifTop $ uncachedHandler $ serveFile "res/index.html"
 
 -- Content/functionality functions
 
+-- Some people just want to watch the world burn.
+routes :: [ (BS.ByteString, HHandler ()) ]
+routes = [ ("res/"  , serveDirectory "res")
+         , ("post"   , method POST performPost)
+         , ("getposts/:pidx/:pcnt", withContentType "text/json" fetchPosts)
+         , ("getpost/:pid", withContentType "text/json" fetchPost)
+         , ("dragons", dragons) ]
+
+-- Shrek plz.
+dragons :: HHandler ()
+dragons = writeBS "Here be dragons."
+
 hboardAppInit :: SnapletInit HboardApp HboardApp
 hboardAppInit = makeSnaplet "hboard" "An image-board server!" Nothing $ do
   b <- nestSnaplet "board" board $ boardInit
-  addRoutes [ ("/res/", serveDirectory "res")
-            , ("post", method POST performPost) ]
+  addRoutes routes
   wrapSite (\site -> tryTop <|> site <|> serveNotFound)
   return $ HboardApp b
 
+fetchPost :: HHandler ()
+fetchPost = do
+  getParam "pid"
+           >>= retPost
+           >>= maybe (withResponseCode 404 $ writeBS "{}")
+                     (writeLBS . encode)
+  where
+    retPost Nothing  = return Nothing
+    retPost (Just x) = do
+      n <- query (GetPost $ BS.unpack x)
+      return n
+
+readDecMaybe :: BS.ByteString -> Maybe Int
+readDecMaybe s = case readDec $ BS.unpack s of
+  [ (i, "") ] -> Just i
+  _           -> Nothing
+
+fetchPosts :: HHandler ()
+fetchPosts = do
+  pidx <- getParam "pidx"
+  pcnt <- getParam "pcnt"
+  case (pidx >>= readDecMaybe, pcnt >>= readDecMaybe) of
+    (Just i, Just c) -> do
+      psts <- query (GetPosts i c)
+      writeLBS $ encode psts
+    _                -> withResponseCode 404 $ writeBS "{}"
 
 handleImageUpload :: MonadIO m =>
                      [(PartInfo, Either PolicyViolationException FilePath)]
                      -> m (Either BS.ByteString FilePath)
 handleImageUpload [ (pain, Right fp) ] = do
-  fe <- liftIO $ doesFileExist fp
-  nfn <- newImage $ fileExtension fp
-  liftIO $ putStrLn $ show nfn
+  nfn <- newImage
   liftIO $ renameFile fp nfn
   return $ Right nfn
 
@@ -76,8 +121,8 @@ handleImageUpload (_:_) = return $ Left "Multiple files submitted!"
 fileExtension :: FilePath -> FilePath
 fileExtension fp = (last $ splitOn "." fp)
 
-newImage :: MonadIO m => FilePath -> m FilePath
-newImage fe = do
+newImage :: MonadIO m => m FilePath
+newImage = do
   nuid <- liftIO newUIDString
   let nfilename = mkfn nuid
   return $ nfilename
@@ -90,7 +135,7 @@ performPost = do
   img <- validateImage
   (validate img) =<< getPostParam "text"
   where
-    validate (Left err) x = writeBS err
+    validate (Left err) _ = writeBS err
     validate (Right fp) x = maybe (writeBS "No text supplied")
                                   (formulateRepsonse fp)
                                   x
