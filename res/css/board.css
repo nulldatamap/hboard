@@ -1,0 +1,30 @@
+.threadPostBody {
+  opacity: 50%;
+  background-color: #717171;
+}
+
+.contentText {
+  font-family: Courier New;
+  color: #DDD;
+  text-align: inline;
+  display: inline;
+  position: relative;
+}
+
+.errorMsg {
+  background-color: #F00;
+  color: #FFF;
+}
+
+.image {
+  border-style: solid;
+  border-width: 2px;
+  border-radius: 5;
+  width: 25%;
+  height: auto;
+}
+
+.info {
+  font-size: 8;
+  color: #22A;
+}

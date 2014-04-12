@@ -1,0 +1,43 @@
+
+#term {
+  width: 100%;
+  background-color: #2e2d2d;
+  color: #d6d6d6;
+  border-style: solid;
+  border-color: 2e2d2d;
+  border-radius: 2px;
+  font-family: "Courier New", Courier, monospace;
+}
+
+.termEntry {
+  display: block;
+  padding: 0;
+  margin-bottom: 2px;
+  margin-top: 2px;
+}
+
+.termGutter {
+  float: left;
+  font-family: "Courier New", Courier, monospace;
+  margin: 0;
+  margin-right: 5px;
+  border-right-style: dotted;
+  border-right-width: 1;
+  border-right-color: #797979;
+  color: #797979;
+}
+
+.termDefault {
+  margin: 0;
+}
+
+.termError {
+  margin: 0;
+  font-weight: bold;
+  color: #a53116;
+}
+
+.termWarning {
+  margin: 0;
+  color: #d88d17;
+}
