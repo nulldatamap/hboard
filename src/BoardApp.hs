@@ -11,11 +11,12 @@ module BoardApp ( BoardApp
                 , NextEntryId(..)
                 , PostThread (..)
                 , ReplyTo    (..)
-                , PreviewPost(..)
                 , DeletePost (..)
                 , PostOfReply(..)
                 , GetPost    (..)
+                , GetPreview (..)
                 , GetPosts   (..)
+                , PostID
                 , boardInit )
   where
 
@@ -96,16 +97,18 @@ nextEntryId = do
   b <- ask
   return $ b ^. nextId
 
-postThread :: ThreadPost -> Update Board ()
-postThread post = do
+postThread :: ImageRef -> ByteString -> Update Board ()
+postThread iref ptxt = do
   b <- get
+  let post = ThreadPost (show $ b ^. nextId) iref ptxt []
   put $ over posts (Map.insert (post ^. postId) post)   -- Add the post to the board
       $ over topPosts ((:) (post ^. postId)) -- Add the post the the top posts
       $ incBoard b                         -- Increment the post id counter
 
-replyTo :: ThreadReply -> PostID -> Update Board ()
-replyTo rep pstid = do
+replyTo :: (Maybe ImageRef) -> ByteString -> PostID -> Update Board ()
+replyTo iref rtxt pstid = do
   b <- get
+  let rep = ThreadReply (show $ b ^. nextId) iref rtxt
   case Map.lookup pstid (b ^. posts) of -- If the post exists:
     Just _  -> put $ over topPosts (bump pstid) -- Bump it
                     -- And add the reply to the post
@@ -114,12 +117,14 @@ replyTo rep pstid = do
                    $ incBoard b         -- Increment the post id counter
     Nothing -> put b -- Else do nothing
 
-previewPost :: PostID -> Query Board (Maybe ThreadPost)
-previewPost pid = do
+getPreview :: PostID -> Query Board (Maybe ThreadPost)
+getPreview pid = do
   b <- ask
   -- Return the post with only the 3 latest replies if it exists
   return $ Map.lookup pid (b ^. posts) >>=
-         (\x -> return $ over postReplies ((take 3) . reverse) x ) 
+         (\x -> return $ over postReplies
+                              (reverse . (take 3) . reverse)
+                              x) 
 
 -- Deletes a thread from the board
 deletePost :: PostID -> Update Board ()
@@ -155,7 +160,7 @@ getPosts idx cnt = do
 makeAcidic ''Board [ 'nextEntryId
                    , 'postThread
                    , 'replyTo
-                   , 'previewPost
+                   , 'getPreview
                    , 'deletePost
                    , 'postOfReply
                    , 'getPost
