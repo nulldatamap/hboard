@@ -1,21 +1,21 @@
 <html>
   <head>
-    <title>Wow in the wowser!</title>
+    <link href="/css/board.css" rel="stylesheet" type="text/css"></link>
     <script type="text/javascript" src="/js/jquery-1.11.0.min.js"></script>
     <script type="text/javascript" src="/js/iterator.js"></script>
     <script type="text/javascript" src="/js/template.js"></script>
     <script type="text/javascript" src="/js/term.js"></script>
     <script type="text/javascript" src="/js/render.js"></script>
-    <link href="/css/board.css" rel="stylesheet" type="text/css"></link>
   </head>
-  <body onload="Render.init( Render.render_frontpage );">
-    <h1>Hboard.</h1>
-    <p>Let the lambdas be with you young warrior!</p>
-    <form name="input" action="post" method="post" enctype="multipart/form-data">
+  <body onload="Render.init( Render.render_view );">
+    <h5>Reply:</h5>
+    <form id="repfrm" name="input" action="reply" method="post" enctype="multipart/form-data">
       <input type="file" name="file" id="file">
+      <input type="hidden" name="to" value=""></div>
       Text: <input type="text" name="text">
       <input type="submit" value="Post it!">
     </form>
+    <script>document.forms[0]["to"].value = document.location.hash.substr(1);</script>
     <div id="postContainer"></div>
   </body>
 </html>
