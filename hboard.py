@@ -22,7 +22,8 @@ boards_desc = { "r": "Random (NSFW)"
               , "a": "Anime & Manga"
               , "t": "Tech & Science"
               , "c": "Coding & Computer Science"
-              , "l": "Language" }
+              , "l": "Language"
+              , "arks_is_a_shit" : "Arks is a shit" }
 
 def init_boards():
   global imageCounter, boards
@@ -123,6 +124,7 @@ def display_post( b, p ):
 
 @app.route("/")
 def frontpage():
+  print "wow"
   after_this_request( no_cahce )
   return render_template( "index.html"
                         , title="hboard"

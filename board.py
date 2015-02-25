@@ -19,9 +19,13 @@ def dict_modify( d, k, f ):
   nd[k] = f( nd[k] )
   return nd
 
+def escape( t ):
+  t.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#39;')
+
 class BoardReply(object):
   def __init__( self, img, txt, pid, op ):
     self.img = img
+    escape( txt )
     self.txt = txt
     self.pid = pid
     self.op = op
@@ -38,6 +42,7 @@ class BoardPost(object):
   def __init__( self, img, txt, pid, op, reps ):
     self.pid = pid
     self.img = img
+    escape( txt )
     self.txt = txt
     self.op = op
     self.reps = reps
