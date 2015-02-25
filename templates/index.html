@@ -1,0 +1,14 @@
+{% extends "layout.html" %} <!-- Means we use the layout -->
+{% block body %} <!-- Everything under here goes inside of the layout -->
+<h1>Hboard</h1>
+<h4>Boards:</h4>
+<pre>
+{% for board in boards.keys() %}  <!-- This displays each board -->
+| <a href="/{{ board }}">{{ board }}: {{ boards[board] }}</a> 
+{% endfor %}
+</pre>
+<br>
+<p>This website is under construction and need a designer.
+<br>
+If you're interested please contact me at: <a href="thebreadcat@gmail.com">thebreadcat@gmail.com</a></p>
+{% endblock %} <!-- Everything above this goes inside of the layout -->

@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block body %}
+<p>You're now viewing/replying to post #{{ post.pid }}</p>
+<!-- This only get's displayed of there was an error -->
+{% if error %}<pre> <span style="color: #FF0000"> {{ error }} </span> </pre>{% endif %}
+<form name="input" action="" method="post" enctype="multipart/form-data">
+  <input type="file" name="file" id="file">
+  <br/>
+  Text: <textarea type="text" name="text"></textarea>
+  <input type="submit" value="Post it!">
+</form>
+<div class="threadPostBody">
+  <pre class="info">{{ post.pid + " - " + post.op }}</pre>
+  <a href="{{ img(post.img) }}"><img class="image" src="{{ img(post.img) }}"></img></a>
+  <p class="contentText">{{ post.txt }}</p>
+  <div class="threadPostreplies">
+    <!-- This code is duplicated for each reply -->
+    {% for reply in post.reps %}
+    <div class="replyBody">
+    <pre class="info">{{ reply.pid + " - " + reply.op }}</pre>
+    {% if reply.img  %}
+      <!-- Reply image (only if there is one) -->
+      <a href="{{ img(reply.img) }}"><img class="image" src="{{ img(reply.img) }}"></img></a>
+    {% endif %}
+    <p class="contentText">{% for line in reply.txt.split( '\n' ) %} {{line}}<br> {% endfor %}</p> <!-- Reply test -->
+    </div>
+    {% endfor %}
+    <!-- The duplication ends here -->
+  </div>
+</div>
+{% endblock %}

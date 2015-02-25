@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+{% block body %}
+{% if error %}<pre> <span style="color: #FF0000"> {{ error }} </span> </pre>{% endif %}
+<h1>Hboard.</h1>
+<h2>{{ title }} - {{ boards_desc[title] }}</h2>
+<form name="input" action="" method="post" enctype="multipart/form-data">
+  <input type="file" name="file" id="file">
+  <br/>
+  Text: <textarea type="text" name="text"></textarea>
+  <input type="submit" value="Post it!">
+</form>
+<div id="postContainer"></div>
+<!-- This code is duplicated for each post -->
+{% for post in posts %}
+<div class="threadPostBody">
+  <pre class="info">{{ post.pid + " - " + post.op }}</pre>
+  <a href="{{ img(post.img) }}"><img class="image" src="{{ img(post.img) }}"></img></a>
+  <a href="{{ post.pid }}">[View/reply]</a>
+  <p class="contentText">{{ post.txt }}</p>
+  <div class="threadPostreplies">
+    {% for reply in post.reps %}
+    <div class="replyBody">
+    <pre class="info">{{ reply.pid + " - " + reply.op }}</pre>
+    {% if reply.img  %}
+      <a href="{{ img(reply.img) }}"><img class="image" src="{{ img(reply.img) }}"></img></a>
+    {% endif %}
+    <p class="contentText">{% for line in parse_post( reply.txt ).split( '\n' ) %} {{line|safe}}<br> {% endfor %}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+  <!-- The duplication ends here -->
+</div>
+{% endblock %} <!--==  -->
