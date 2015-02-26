@@ -7,6 +7,7 @@ import os
 import time
 import random
 import string
+import json
 from parsepost import parse_post
 
 FILE_EXTS = [ "jpeg", "jpg", "png", "gif", "webp", "webm" ]
@@ -23,7 +24,8 @@ boards_desc = { "r": "Random (NSFW)"
               , "t": "Tech & Science"
               , "c": "Coding & Computer Science"
               , "l": "Language"
-              , "arks_is_a_shit" : "Arks is a shit" }
+              , "arks_is_a_shit": "Arks is a shit"
+              , "d": "Design & Art" }
 
 def init_boards():
   global imageCounter, boards
@@ -54,23 +56,6 @@ def get_id( ip ):
     r += random.choice( ch )
   return r
 
-def render_board( b, error=None ):
-  return render_template( "boardview.html"
-                        , title=b
-                        , img=img
-                        , boards_desc=boards_desc
-                        , posts=boards[b].get_posts( 10, 0 )
-                        , parse_post=parse_post
-                        , error=error ) 
- 
-def render_post( b, pid, error=None ):
-  return render_template( "postview.html"
-                        , title=b
-                        , url=b+"/"+pid
-                        , img=img
-                        , post=boards[b].get_post( pid )
-                        , error=error ) 
-
 def no_cahce( req ):
   req.headers['Cache-Control'] = 'no-cache'
   return req
@@ -85,54 +70,19 @@ def upload_image( file ):
   file.save( os.path.join( UPLOAD_FOLDER, pfile) )
   return ( True, pfile )
 
-@app.route("/<b>/", methods=["GET", "POST"])
-def diplay_board( b ):
+@app.route("/boards", methods=["GET"])
+def fetch_boards():
+  return json.dumps( boards_desc )
+
+@app.route("/boards/<b>", methods=["GET"])
+def fetch_board( b ):
   if not b in boards.keys():
     abort( 404 )
-  if request.method == "POST":
-    suc, rr = upload_image( request.files['file'] )
-    if not suc:
-      return render_board( b, rr )
-    boards[b].post( rr
-                  , request.form["text"] or ""
-                  , get_id( request.remote_addr ) )
-    # This is not very safe since in theory somebody could have posted
-    # a new thread between the post() and get() call, changing the top
-    pid = boards[b].get().fp.ordering[0]
-    return redirect( "/" + b + "/" + pid + "/" )
-  after_this_request( no_cahce )
-  return render_board( b )
+  return json.dumps( boards[b].get().save() )
 
-@app.route("/<b>/<p>/", methods=["GET", "POST"])
-def display_post( b, p ):
-  if not b in boards.keys():
-    abort( 404 )
-  post = boards[b].get_post( p )
-  if not post:
-    abort( 404 )
-  if request.method == "POST":
-    suc, rr = upload_image( request.files['file'] )
-    if not suc:
-      rr = None
-    boards[b].reply( p
-                   , rr
-                   , request.form["text"] or ""
-                   , get_id( request.remote_addr ) )
-    return redirect( "/" + b + "/" + p + "/" ) # refresh
-  after_this_request( no_cahce )
-  return render_post( b, p )
-
-@app.route("/")
-def frontpage():
-  print "wow"
-  after_this_request( no_cahce )
-  return render_template( "index.html"
-                        , title="hboard"
-                        , boards=boards_desc )
-
+init_boards()
 
 if __name__ == "__main__":
-  init_boards()
   app.debug = True
   app.run( host="0.0.0.0", port=80 )
 
