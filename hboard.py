@@ -1,14 +1,13 @@
 #!/usr/bin/python
 from flask import Flask, g, url_for, render_template, request
 from flask import abort, redirect, after_this_request
-import board
-from counter import Counter
 import os
 import time
 import random
 import string
 import json
 from parsepost import parse_post
+import redis
 
 FILE_EXTS = [ "jpeg", "jpg", "png", "gif", "webp", "webm" ]
 UPLOAD_FOLDER = "static/img/"
@@ -16,27 +15,7 @@ UPLOAD_FOLDER = "static/img/"
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16777216
 
-imageCounter = None
-boards = None
-boards_desc = { "r": "Random (NSFW)"
-              , "g": "Gaming"
-              , "a": "Anime & Manga"
-              , "t": "Tech & Science"
-              , "c": "Coding & Computer Science"
-              , "l": "Language"
-              , "arks_is_a_shit": "Arks is a shit"
-              , "d": "Design & Art" }
-
-def init_boards():
-  global imageCounter, boards
-  imageCounter = Counter.try_load( "boards/imgcounter" )
-  boards = {}
-  for board in boards_desc:
-    init_board( board )
-
-def init_board( bn ):
-  print "Opening board: " + str( bn )
-  boards[bn] = board.BoardStorage( bn )
+db = redis.StrictRedis( host='barbarbar.me', port=6379, db=0 )
 
 def is_valid_file( fn ):
   return '.' in fn and fn.split( '.' )[-1] in FILE_EXTS
@@ -60,27 +39,158 @@ def no_cahce( req ):
   req.headers['Cache-Control'] = 'no-cache'
   return req
 
-def upload_image( file ):
+def upload_image( file, b ):
+  global db
+
   if not file:
     return ( False, "No file supplied" )
+
   if not is_valid_file( file.filename ):
     return ( False, "Invalid file." )
-  imageCounter.inc()
-  pfile = imageCounter.id() + "." + file_extension( file.filename ) 
+
+  image_id = db.incr( "imagecounter" )
+
+  pfile = hex( image_id )[2:] + "." + file_extension( file.filename ) 
+
+  db.lpush( "gallery", pfile )
+  db.lpush( "gallery:" + b, pfile )
+
   file.save( os.path.join( UPLOAD_FOLDER, pfile) )
+
   return ( True, pfile )
 
 @app.route("/boards", methods=["GET"])
-def fetch_boards():
-  return json.dumps( boards_desc )
+def boards_api():
+  global db
+  return json.dumps( db.hgetall( "boards" ) )
 
-@app.route("/boards/<b>", methods=["GET"])
-def fetch_board( b ):
-  if not b in boards.keys():
+@app.route("/boards/<b>", methods=["GET", "POST"])
+def board_api( b ):
+  global db
+
+  boardkey = "board:" + b
+
+  if not db.hexists( "boards", b ):
     abort( 404 )
-  return json.dumps( boards[b].get().save() )
+  
+  if request.method == "POST":
+    suc, val = upload_image( request.files.get( "file" ), b )
+    if suc:
+      if request.form.has_key( "text" ):
+        post_id = db.incr( boardkey + ":counter" )
+        db.hmset( boardkey + ":" + str( post_id )
+                , { "poster_id" : get_id( request.remote_addr )
+                  , "text" : request.form["text"]
+                  , "image" : val
+                  , "is_post" : 1 } )
+        top_score = db.incr( boardkey + ":top_score" )
+        db.zadd( boardkey + ":posts", top_score, post_id )
+        return json.dumps( { "post_id" : post_id } )
+      else:
+        val = "No post text supplied"
+    
+    return json.dumps( { "error": val } ), 306
 
-init_boards()
+  try:
+    start = int( request.args.get( "start", 0 ) )
+    end = int( request.args.get( "end", -1 ) )
+  except:
+    return json.dumps( { "error": "Query parameters must be integers" } ), 306
+
+  posts = db.zrange( boardkey + ":posts", start, end )
+  
+  board = {}
+  
+  for post in posts:
+    board[post] = db.hgetall( boardkey + ":" + post )
+  
+  return json.dumps( board )
+
+@app.route("/boards/<b>/<p>", methods=["GET", "POST"])
+def post_api( b, p ):
+  global db
+  
+  boardkey = "board:" + b
+  postkey = boardkey + ":" + p
+  
+  if not db.exists( postkey ):
+    abort( 404 )
+
+  # Reply to a post
+  if request.method == "POST":
+    suc, val = (True, None)
+    
+    if int( db.hget( postkey, "post_id" ) ) == 0:
+      return json.dumps( { "error": "Can only reply to posts." } ), 306
+
+    if request.files.has_key( "file" ):
+      suc, val = upload_image( request.files["file"], b )
+
+    if not request.form.has_key( "text" ):
+      suc, val = (False, "No reply text supplied")
+    
+    if suc:
+      reply_id = db.incr( boardkey + ":counter" )
+      db.hmset( boardkey + ":" + str( reply_id )
+              , { "poster_id" : get_id( request.remote_addr )
+                , "text" : request.form["text"]
+                , "image" : val
+                , "is_post" : 0 } )
+      db.lpush( postkey + ":replies" , reply_id )
+      top_score = db.incr( boardkey + ":top_score" )
+      db.zadd( boardkey + ":posts", top_score, p )
+      return json.dumps( { "reply_id" : reply_id } )
+    else:
+      return json.dumps( { "error" : val } ), 306
+
+  # View a post
+  post = { "poster_id" : db.hget( postkey, "poster_id" )
+         , "text" : db.hget( postkey, "text" )
+         , "image" : db.hget( postkey, "image" ) }
+  
+  # Only posts have replies
+  if int( db.hget( postkey, "is_post" ) ) == 1:
+    post["replies"] = []
+
+    # Replies are stored as references ( by id )
+    reply_ids = db.lrange( postkey + ":replies" , 0, -1 )
+    
+    # But when calling we want all the replies in-structure and in order
+    for reply_id in reply_ids:
+      reply = db.hgetall( "board:" + b + ":" + reply_id )
+      del reply["is_post"]
+      # But we still want to know the id of each post
+      reply["id"] = reply_id
+      
+      post["replies"].append( reply )
+  
+  return json.dumps( post )
+
+@app.route("/gallery/<b>")
+def api_gallery( b ):
+  global db
+  try:
+    start = int( request.args.get( "start", 0 ) )
+    end = int( request.args.get( "end", -1 ) )
+  except:
+    return json.dumps( { "error": "Query parameters must be integers" } ), 306
+
+  images = db.lrange( "gallery:" + b, start, end )
+  return json.dumps( images )
+
+@app.route("/gallery")
+def api_board_gallery():
+  global db
+  try:
+    start = int( request.args.get( "start", 0 ) )
+    end = int( request.args.get( "end", -1 ) )
+  except:
+    return json.dumps( { "error": "Query parameters must be integers" } ), 306
+
+  images = db.lrange( "gallery", start, end )
+  
+  return json.dumps( images )
+
 
 if __name__ == "__main__":
   app.debug = True
