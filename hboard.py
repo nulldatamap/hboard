@@ -99,17 +99,7 @@ def board_api( b ):
 
   posts = db.zrange( boardkey + ":posts", start, end )
   
-  board = []
-
-  for post_id in posts:
-    post = db.hgetall( boardkey + ":" + post_id )
-    
-    del post["is_post"]
-    post["id"] = post_id
-    
-    board.append( post )
-  
-  return json.dumps( board )
+  return json.dumps( posts )
 
 @app.route("/api/boards/<b>/<p>/", methods=["GET", "POST"])
 def post_api( b, p ):
@@ -157,8 +147,14 @@ def post_api( b, p ):
   if int( db.hget( postkey, "is_post" ) ) == 1:
     post["replies"] = []
 
+    try:
+      start = int( request.args.get( "start", 0 ) )
+      end = int( request.args.get( "end", -1 ) )
+    except:
+      return json.dumps( { "error": "Query parameters must be integers" } ), 306
+
     # Replies are stored as references ( by id )
-    reply_ids = db.lrange( postkey + ":replies" , 0, -1 )
+    reply_ids = db.lrange( postkey + ":replies" , start, end )
     
     # But when calling we want all the replies in-structure and in order
     for reply_id in reply_ids:
