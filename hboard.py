@@ -99,10 +99,15 @@ def board_api( b ):
 
   posts = db.zrange( boardkey + ":posts", start, end )
   
-  board = {}
-  
-  for post in posts:
-    board[post] = db.hgetall( boardkey + ":" + post )
+  board = []
+
+  for post_id in posts:
+    post = db.hgetall( boardkey + ":" + post_id )
+    
+    del post["is_post"]
+    post["id"] = post_id
+    
+    board.append( post )
   
   return json.dumps( board )
 
