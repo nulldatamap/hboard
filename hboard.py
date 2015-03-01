@@ -15,7 +15,7 @@ UPLOAD_FOLDER = "static/img/"
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16777216
 
-db = redis.StrictRedis( host='barbarbar.me', port=6379, db=0 )
+db = redis.StrictRedis( host='localhost', port=6379, db=0 )
 
 def is_valid_file( fn ):
   return '.' in fn and fn.split( '.' )[-1] in FILE_EXTS
