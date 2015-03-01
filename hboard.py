@@ -192,13 +192,13 @@ def api_board_gallery():
   return json.dumps( images )
 
 @app.route( "/<b>/" )
-def board( b ):
+def board_view( b ):
   if not db.hexists( "boards", b ):
     abort( 404 )
   return send_from_directory( "static", "boardview.html" )
 
 @app.route( "/<b>/<p>" )
-def board( b, p ):
+def post_view( b, p ):
   if not db.exists( "board:" + b + ":" + p ):
     abort( 404 )
   return send_from_directory( "static", "postview.html" )
