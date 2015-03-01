@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from flask import Flask, g, url_for, render_template, request
-from flask import abort, redirect, after_this_request
+from flask import abort, redirect, after_this_request, send_from_directory
 import os
 import time
 import random
@@ -59,12 +59,12 @@ def upload_image( file, b ):
 
   return ( True, pfile )
 
-@app.route("/boards", methods=["GET"])
+@app.route("/api/boards/", methods=["GET"])
 def boards_api():
   global db
   return json.dumps( db.hgetall( "boards" ) )
 
-@app.route("/boards/<b>", methods=["GET", "POST"])
+@app.route("/api/boards/<b>/", methods=["GET", "POST"])
 def board_api( b ):
   global db
 
@@ -106,7 +106,7 @@ def board_api( b ):
   
   return json.dumps( board )
 
-@app.route("/boards/<b>/<p>", methods=["GET", "POST"])
+@app.route("/api/boards/<b>/<p>/", methods=["GET", "POST"])
 def post_api( b, p ):
   global db
   
@@ -166,7 +166,7 @@ def post_api( b, p ):
   
   return json.dumps( post )
 
-@app.route("/gallery/<b>")
+@app.route("/api/gallery/<b>/")
 def api_gallery( b ):
   global db
   try:
@@ -178,7 +178,7 @@ def api_gallery( b ):
   images = db.lrange( "gallery:" + b, start, end )
   return json.dumps( images )
 
-@app.route("/gallery")
+@app.route("/api/gallery/")
 def api_board_gallery():
   global db
   try:
@@ -191,6 +191,21 @@ def api_board_gallery():
   
   return json.dumps( images )
 
+@app.route( "/<b>/" )
+def board( b ):
+  if not db.hexists( "boards", b ):
+    abort( 404 )
+  return send_from_directory( "static", "boardview.html" )
+
+@app.route( "/<b>/<p>" )
+def board( b, p ):
+  if not db.exists( "board:" + b + ":" + p ):
+    abort( 404 )
+  return send_from_directory( "static", "postview.html" )
+
+@app.route( "/" )
+def index():
+  return send_from_directory( "static", "index.html" )
 
 if __name__ == "__main__":
   app.debug = True
