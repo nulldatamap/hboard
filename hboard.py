@@ -60,11 +60,13 @@ def upload_image( file, b ):
   return ( True, pfile )
 
 @app.route("/api/boards/", methods=["GET"])
+@crossdomain(origin='*')
 def boards_api():
   global db
   return json.dumps( db.hgetall( "boards" ) )
 
 @app.route("/api/boards/<b>/", methods=["GET", "POST"])
+@crossdomain(origin='*')
 def board_api( b ):
   global db
 
@@ -102,6 +104,7 @@ def board_api( b ):
   return json.dumps( posts )
 
 @app.route("/api/boards/<b>/<p>/", methods=["GET", "POST"])
+@crossdomain(origin='*')
 def post_api( b, p ):
   global db
   
@@ -168,6 +171,7 @@ def post_api( b, p ):
   return json.dumps( post )
 
 @app.route("/api/gallery/<b>/")
+@crossdomain(origin='*')
 def api_gallery( b ):
   global db
   try:
@@ -180,6 +184,7 @@ def api_gallery( b ):
   return json.dumps( images )
 
 @app.route("/api/gallery/")
+@crossdomain(origin='*')
 def api_board_gallery():
   global db
   try:
