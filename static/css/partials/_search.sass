@@ -1,0 +1,37 @@
+@import partials/_base
+
+.search
+    display: block
+    position: relative
+    margin-bottom: 50px
+    height: 0
+
+.search-query
+    display: block
+    position: relative
+    margin: 0
+    padding: 5px
+    padding-left: 40px
+    width: 100%
+
+    color: $color-white
+    font-family: $base-font-family
+    font-size: $header-font-size
+    font-weight: $light
+
+    background-color: transparent
+    border: 0
+    border-bottom: 1px solid rgba(255,255,255,0.5)
+ 
+    &:focus
+        border-bottom: 1px solid $color-white-shade
+
+.search__label::before
+    display: block
+    position: absolute
+
+    color: rgba(255,255,255,0.5)
+    font-size: 2em
+
+.search__focused::before
+    color: #fff !important
