@@ -8,6 +8,7 @@ import string
 import json
 from parsepost import parse_post
 import redis
+from PIL import Image
 
 from datetime import timedelta
 from flask import make_response, request, current_app
@@ -57,6 +58,9 @@ def crossdomain(origin=None, methods=None, headers=None,
 
 FILE_EXTS = [ "jpeg", "jpg", "png", "gif", "webp", "webm" ]
 UPLOAD_FOLDER = "static/img/"
+THUMBNAIL_FOLDER = "static/thumbnail/" 
+
+THUMBNAIL_MAX_AXIS_SIZE = 250
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16777216
@@ -85,6 +89,33 @@ def no_cahce( req ):
   req.headers['Cache-Control'] = 'no-cache'
   return req
 
+def create_thumbnail( img_id ):
+  file_path = UPLOAD_FOLDER + img_id 
+  thumbnail_path = THUMBNAIL_FOLDER + img_id
+
+  img = Image.open( file_path )
+  
+  w, h = img.size
+  
+  # New dimensions
+  nw, nh = w, h
+
+  # If the image doesn't need to be scaled down, make the thumbnail just be
+  # the original image instead.
+  if w > THUMBNAIL_MAX_AXIS_SIZE or h > THUMBNAIL_MAX_AXIS_SIZE:
+    # Calcuate the new dimensions so that the greating axis is capped at
+    # 250 pixels, and the other axis is scaled accordingly to the ratio
+    if w > h:
+      nw = 250
+      nh = int( float( nw ) / w * h ) or 1
+    else:
+      nh = 250
+      nw = int( float( nh ) / h * w ) or 1
+    # Create the thumbnail
+    img.thumbnail( (nw, nh), Image.ANTIALIAS )
+
+  img.save( thumbnail_path ) 
+
 def upload_image( file, b ):
   global db
 
@@ -101,7 +132,9 @@ def upload_image( file, b ):
   db.lpush( "gallery", pfile )
   db.lpush( "gallery:" + b, pfile )
 
-  file.save( os.path.join( UPLOAD_FOLDER, pfile) )
+  file.save( UPLOAD_FOLDER + "/" + pfile )
+
+  create_thumbnail( pfile )
 
   return ( True, pfile )
 
