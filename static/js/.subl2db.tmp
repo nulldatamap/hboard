@@ -5,10 +5,6 @@ function Bar() {
     var _this = this;
     var $body= $("body");
 
-    var path_fragments = window.location.pathname.split( "/" );
-    var board = path_fragments[1];
-    var thread = path_fragments[2];
-
     //Define the defaults
     var defaults = {
         pagetitle:          "BarBarBar",
@@ -75,7 +71,7 @@ function Bar() {
 
     var checkView = function() {
         if ($body.hasClass("boardView")) {
-            getPosts();
+            get_the_post();
         }
 
         if ($body.hasClass("threadView")) {
@@ -130,38 +126,38 @@ function Bar() {
     //createNav end
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    /*var get_the_post = function() {
+    var getID = function() {
+        var ids = [];
         getJSON(apiUrl + "a/").then(function(data) {
-            var the_id = [];
+            
             for ( var i in data ) {
-                var key = data[i];
-                the_id.push(data[i]);
-                var goUpOne = 0;
-                getJSON(apiUrl + "a/" + key + "/").then(function(post) {
-                    
-                    console.log(the_id);
-                    console.log(i + " the id = " + the_id[goUpOne]);
-                    goUpOne++;
-                });
+                id = data[i];
+                ids.push(id);
             }
         });
-    }*/
+        return ids;
+    }
+
+    var get_the_post = function() {
+        console.log(getID());
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////
     //getPosts start
     //Gets the posts for the current board
 
-    var getPosts = function() {
+    /*var getPosts = function() {
 
-        getJSON(apiUrl + board + "/").then(function(data) {
-            var the_id = [];
+        var board = window.location.hash.substr(1);
+
+        getJSON("http://barbarbar.me/dev/api/boards/" + board + "/").then(function(data) {
             for (var i in data) {
+                console.log("outside: " + i);
                 var key = data[i];
 
-                the_id.push(key);
-                //console.log(the_id);
-                var j = 0;
-                getJSON(apiUrl + board + "/" + key + "/").then(function(post) {
+                getJSON("http://barbarbar.me/dev/api/boards/" + board + "/" + key + "/").then(function(post) {
+
+                    console.log("inside: " + key);
 
                     var postDiv = document.createElement("div");
                     postDiv.classList.add("board__post");
@@ -170,9 +166,9 @@ function Bar() {
                     var img = document.createElement("img");
                     var thread_link = document.createElement("a");
                     imageDiv.classList.add("post__image");
-                    thread_link.setAttribute("href", "threadview.html#" + board + "#" + the_id[j]);
+                    thread_link.setAttribute("href", "threadview.html#" + board + "#" + data[0]);
                     thread_link.innerHTML = "View thread";
-                    img.src = "static/thumbnail/" + post.image;
+                    img.src = "http://barbarbar.me/static/img/" + post.image;
                     imageDiv.appendChild(img);
                     postDiv.appendChild(imageDiv);
                     postDiv.appendChild(thread_link);
@@ -190,7 +186,7 @@ function Bar() {
                     postDiv.appendChild(contentDiv);
 
                     document.querySelector("#contentWrapper").appendChild(postDiv);
-                    j++;
+
                     if (post.replies === null) { // this is the worst API
                         return;
                     }
@@ -205,7 +201,7 @@ function Bar() {
                         var repImageDiv = document.createElement("div");
                         var img = document.createElement("img");
                         repImageDiv.classList.add("reply__image");
-                        img.src = "static/thumbnail/" + reply.image;
+                        img.src = "http://barbarbar.me/static/img/" + reply.image;
                         repImageDiv.appendChild(img);
                         replyDiv.appendChild(repImageDiv);
 
@@ -230,28 +226,57 @@ function Bar() {
                 });
             }
         });
-    }
+    }*/
     //getPosts end
     ////////////////////////////////////////////////////////////////////////////////////////
 
     ///////////////////////////////////////////////////////////////////////////////////////
     //getThread start
     //Gets the thread the user clicked on
-    var getThread = function() {
+    /*var getThread = function() {
+        function get(url) {
+          return new Promise(function(resolve, reject) {
+            var req = new XMLHttpRequest();
+            req.open('GET', url);
+
+            req.onload = function() {
+              if (req.status == 200) {
+                resolve(req.response);
+              }
+              else {
+                reject(Error(req.statusText));
+              }
+            };
+
+            req.onerror = function() {
+              reject(Error("Network Error"));
+            };
+
+            req.send();
+          });
+        }
+
+        function getJSON(url) {
+          return get(url).then(JSON.parse);
+        }
+
+        var board = window.location.hash.substr(1, 1);
+        var thread = window.location.hash.substr(3, 2);
         
-        getJSON(apiUrl + board + "/").then(function(data) {
-            data.reverse();
-            getJSON(apiUrl + board + "/" + thread + "/").then(function(post) {
+        getJSON("http://barbarbar.me/dev/api/boards/" + board + "/").then(function(data) {
+            console.log("http://barbarbar.me/dev/api/boards/" + board + "/" + thread + "/");
+
+            getJSON("http://barbarbar.me/dev/api/boards/" + board + "/" + thread + "/").then(function(post) {
                 if (post.image === null) {
                     return;
                 }
                 var postDiv = document.createElement("div");
                 postDiv.classList.add("board__post");
 
-                var imageDiv = document.createElement("div"); 
+                var imageDiv = document.createElement("div");
                 var img = document.createElement("img");
                 imageDiv.classList.add("post__image");
-                img.src = "static/thumbnail/" + post.image;
+                img.src = "http://barbarbar.me/static/img/" + post.image;
                 imageDiv.appendChild(img); 
                 postDiv.appendChild(imageDiv);
 
@@ -279,7 +304,7 @@ function Bar() {
                         var repImageDiv = document.createElement("div");
                         var img = document.createElement("img");
                         repImageDiv.classList.add("reply__image");
-                        img.src = "static/thumbnail/" + reply.image;
+                        img.src = "http://barbarbar.me/static/img/" + reply.image;
                         repImageDiv.appendChild(img);
                         replyDiv.appendChild(repImageDiv);
 
@@ -301,7 +326,7 @@ function Bar() {
                     }
             });
         });
-    }
+    }*/
     
     //getThread end
     ////////////////////////////////////////////////////////////////////////////////////////
