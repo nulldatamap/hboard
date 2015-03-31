@@ -57,6 +57,7 @@ def crossdomain(origin=None, methods=None, headers=None,
   return decorator
 
 FILE_EXTS = [ "jpeg", "jpg", "png", "gif", "webp", "webm" ]
+THUMBNAILABLE = [ "jpeg", "jpg", "png", "gif" ]
 UPLOAD_FOLDER = "static/img/"
 THUMBNAIL_FOLDER = "static/thumbnail/" 
 
@@ -106,15 +107,15 @@ def create_thumbnail( img_id ):
     # Calcuate the new dimensions so that the greating axis is capped at
     # 250 pixels, and the other axis is scaled accordingly to the ratio
     if w > h:
-      nw = 250
+      nw = THUMBNAIL_MAX_AXIS_SIZE
       nh = int( float( nw ) / w * h ) or 1
     else:
-      nh = 250
+      nh = THUMBNAIL_MAX_AXIS_SIZE
       nw = int( float( nh ) / h * w ) or 1
     # Create the thumbnail
     img.thumbnail( (nw, nh), Image.ANTIALIAS )
-
-  img.save( thumbnail_path ) 
+  
+  img.save( thumbnail_path )
 
 def upload_image( file, b ):
   global db
@@ -134,7 +135,11 @@ def upload_image( file, b ):
 
   file.save( UPLOAD_FOLDER + "/" + pfile )
 
-  create_thumbnail( pfile )
+  try:
+    if file_extension( file.filename ) in THUMBNAILABLE:
+      create_thumbnail( pfile )
+  except e:
+    print( "Failed to generate thumbnail for '" + pfile + "': " + str( e )  )
 
   return ( True, pfile )
 
